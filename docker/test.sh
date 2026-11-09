@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# CI entry point.
+# Test entry point.
 # 1. Tests the two services outside Docker.
 # 2. Builds four images and prints their sizes.
 # 3. Breaks the images on purpose, prints each error, and shows the fix.

@@ -2,7 +2,7 @@
 
 Four Dockerfiles for a small Puppeteer service and a small Playwright service.
 Each image runs the browser as a non-root user with the Chrome sandbox on,
-starts `tini` as process 1 and has a health check that renders a page. The CI
+starts `tini` as process 1 and has a health check that renders a page. The test
 script `test.sh` builds the images, breaks them on purpose and records each
 error. The tutorial explains each file and each error:
 [Run Puppeteer and Playwright in Docker Without Crashes](https://apisk.com/blog/puppeteer-playwright-docker/).
@@ -23,7 +23,7 @@ error. The tutorial explains each file and each error:
 | `*/server.js` | The service: `GET /health`, `GET /check.png`, `GET /check.pdf` |
 | `*/healthcheck.js` | The `HEALTHCHECK` command |
 | `probes/` | Scripts that `test.sh` runs in the containers: zombies, crashes, fonts, `/dev/shm` |
-| `test.sh` | The CI script |
+| `test.sh` | The test script |
 
 ## Build and run
 
@@ -80,7 +80,7 @@ npm test
 
 Run both commands in the `puppeteer` and in the `playwright` folder. For
 Playwright, first run `npx playwright install --only-shell chromium`.
-`test.sh` is the CI script for Ubuntu 24.04. It also builds the images and
+`test.sh` is the test script for Ubuntu 24.04. It also builds the images and
 checks the errors: missing libraries, root user, no sandbox rights, seccomp
 profiles, hosts that restrict user namespaces, missing fonts, zombie
 processes, memory limits and the restart after a browser crash.

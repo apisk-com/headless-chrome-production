@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# CI entry point for Ubuntu 24.04.
+# Test entry point for Ubuntu 24.04.
 # 1. Adds the metadata addresses to the loopback interface, so that the fake
 #    metadata server in the tests listens on 169.254.169.254 and fd00:ec2::254.
 # 2. Installs the packages and browsers, and runs the tests.

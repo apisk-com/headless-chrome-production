@@ -71,7 +71,7 @@ npm test
 
 The tests start local servers on 127.0.0.1 and [::1] and a fake metadata
 endpoint. `test/layers.test.js` shows what each layer misses on its own.
-`test.sh` is the CI script for Ubuntu 24.04. It also adds 169.254.169.254 and
+`test.sh` is the test script for Ubuntu 24.04. It also adds 169.254.169.254 and
 fd00:ec2::254 to the loopback interface, runs the commands of this README and
 checks the Docker network rules.
 
