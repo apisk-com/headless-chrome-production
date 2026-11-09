@@ -1,0 +1,32 @@
+# The renderer has no route out of its network. It reaches other hosts only
+# through the egress proxy, which checks each address before it connects.
+name: ssrf-protection
+
+services:
+  renderer:
+    build: .
+    init: true
+    # The Chrome sandbox needs this (see the Docker tutorial).
+    cap_add: [SYS_ADMIN]
+    environment:
+      EGRESS_PROXY_URL: http://egress-proxy:3128
+      # Renders use the CPU: fewer jobs at the same time on 2 CPUs.
+      MAX_JOBS: "3"
+    networks: [render]
+    depends_on: [egress-proxy]
+    mem_limit: 2g
+    cpus: 2
+    pids_limit: 512
+
+  egress-proxy:
+    build:
+      context: .
+      dockerfile: Dockerfile.proxy
+    networks: [render, outside]
+    mem_limit: 256m
+
+networks:
+  # internal: true gives this network no route to other networks or the internet.
+  render:
+    internal: true
+  outside: {}
