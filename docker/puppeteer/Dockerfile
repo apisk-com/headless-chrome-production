@@ -10,9 +10,12 @@ RUN apt-get update \
   && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
+# Chrome is already in this folder. Name it, so that Puppeteer also finds
+# Chrome when the container runs as another user.
+ENV PUPPETEER_CACHE_DIR=/home/pptruser/.cache/puppeteer
 COPY package.json package-lock.json ./
-# Chrome is already in /home/pptruser/.cache/puppeteer. Do not download it again.
-# If the versions differ, the service stops at start with "Could not find Chrome".
+# Do not download Chrome again. If the versions differ, the service stops
+# at start with "Could not find Chrome".
 RUN PUPPETEER_SKIP_DOWNLOAD=true npm ci --omit=dev
 COPY server.js healthcheck.js ./
 

@@ -49,6 +49,7 @@ build pw-official playwright Dockerfile
 build pw-slim playwright Dockerfile.slim
 # The same Dockerfiles with one part removed, to show the errors.
 build pptr-official-noemoji puppeteer Dockerfile 's/ fonts-noto-color-emoji//'
+build pptr-official-nocache puppeteer Dockerfile '/^ENV PUPPETEER_CACHE_DIR/d'
 build pptr-slim-nofonts puppeteer Dockerfile.slim 's/ fonts-noto-core fonts-noto-cjk fonts-noto-color-emoji//'
 build pptr-slim-nodeps puppeteer Dockerfile.slim 's/ --install-deps//'
 build pw-slim-nodeps playwright Dockerfile.slim 's/install --with-deps/install/'
@@ -117,6 +118,10 @@ save_check() { # label
   echo "=====END $1.png"
 }
 
+probe() { # [docker run options...] image [command...]
+  docker run --rm --cap-add=SYS_ADMIN -v "$here/probes:/app/probes:ro" "$@" 2>&1 || true
+}
+
 echo "== 3. The working images"
 for image in pptr-official pptr-slim pw-official pw-slim; do
   expect_healthy "$image starts with SYS_ADMIN" "$image" --cap-add=SYS_ADMIN
@@ -129,6 +134,10 @@ for image in pptr-slim-nofonts pptr-official-noemoji; do
   expect_healthy "$image starts" "$image" --cap-add=SYS_ADMIN
   save_check "$image"
   docker rm -f "$name" > /dev/null
+done
+
+for image in pptr-official pptr-slim pw-official pw-slim; do
+  echo "RECORD fonts for Arabic in $image: $(probe "$image" node probes/fonts.mjs | tr '\n' ' ')"
 done
 
 echo "== 5. Missing libraries"
@@ -158,6 +167,18 @@ for image in pptr-official pptr-slim pw-official pw-slim; do
   docker rm -f "$name" > /dev/null
 done
 
+expect_error "Puppeteer image as root, without PUPPETEER_CACHE_DIR" \
+  'Could not find Chrome (ver. 156.0.8078.47)' pptr-official-nocache --cap-add=SYS_ADMIN --user root
+for image in pptr-official pptr-slim pw-official pw-slim; do
+  if start "$image" --cap-add=SYS_ADMIN --user 4242; then
+    echo "RECORD $image as user 4242: healthy"
+  else
+    docker logs "$name" > "$work/log.txt" 2>&1
+    echo "RECORD $image as user 4242: $(grep -v '^ *at \|^$' "$work/log.txt" | head -n 8 | cut -c 1-300 | tr '\n' ' ')"
+  fi
+  docker rm -f "$name" > /dev/null
+done
+
 echo "== 7. Hosts that restrict user namespaces (Ubuntu 23.10 and later)"
 sudo sysctl -q -w kernel.apparmor_restrict_unprivileged_userns=1
 for opts in "--cap-add=SYS_ADMIN" "--security-opt seccomp=$work/chrome-seccomp.json" \
@@ -176,9 +197,6 @@ done
 sudo sysctl -q -w kernel.apparmor_restrict_unprivileged_userns=0
 
 echo "== 8. Zombie processes"
-probe() { # image [docker run options...] -- arguments for node
-  docker run --rm --cap-add=SYS_ADMIN -v "$here/probes:/app/probes:ro" "$@" 2>&1 || true
-}
 for image in pptr-slim pw-official; do
   echo "RECORD $image, node is process 1:"
   probe --entrypoint node "$image" probes/zombies.mjs
