@@ -19,8 +19,8 @@ Examples for other languages and tools are welcome. Put each one in its own
 folder. Name the folder `<language>-<tool>`, for example
 `java-openhtmltopdf`, or name it after the problem that it solves. Add a
 `test.sh` file that installs what the example needs on Ubuntu 24.04 and runs
-its tests. The test workflow runs `test.sh` for each folder that a push or a
-pull request changes.
+its tests. Run it by hand before you send a pull request. The repository has
+no automatic test workflow at the moment.
 
 ## License
 
