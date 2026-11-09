@@ -1,0 +1,18 @@
+{
+  "name": "playwright-docker",
+  "version": "1.0.0",
+  "private": true,
+  "description": "A small Playwright service with a health check, for Docker images.",
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "playwright": "1.65.0"
+  }
+}
