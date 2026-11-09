@@ -1,6 +1,7 @@
 // Ends the browser or the renderer processes during a call, and prints what
 // the library reports. "browser": the browser process crashes. "renderer":
 // SIGKILL to each renderer process, as the kernel does at the memory limit.
+// "renderer-no-handler": the same, without the "error" handler of server.js.
 import { readdirSync, readFileSync } from 'node:fs';
 import { launch, library } from './launch.mjs';
 
@@ -15,8 +16,10 @@ await page.setContent('<p>A page that waits.</p>');
 // Puppeteer emits "error" and Playwright emits "crash" when a renderer ends.
 page.on('error', (error) => {
   console.log(`  page "error" event: ${error.message}`);
-  // The same handler as in puppeteer/server.js.
-  context.close().catch(() => {});
+  if (what !== 'renderer-no-handler') {
+    // The same handler as in puppeteer/server.js.
+    context.close().catch(() => {});
+  }
 });
 page.on('crash', () => console.log('  page "crash" event'));
 
@@ -34,7 +37,7 @@ function killRenderers() {
 // A call that takes 10 seconds. The crash comes after 300 ms.
 const pending = page.evaluate(() => new Promise((resolve) => setTimeout(resolve, 10_000)));
 setTimeout(async () => {
-  if (what === 'renderer') {
+  if (what.startsWith('renderer')) {
     killRenderers();
   } else {
     const session = library === 'playwright'

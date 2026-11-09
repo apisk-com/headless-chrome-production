@@ -178,20 +178,14 @@ expect_error "Puppeteer image as root, without PUPPETEER_CACHE_DIR" \
 
 # A user ID that has no entry in /etc/passwd, as Kubernetes runAsUser or
 # OpenShift can set. Its home folder is "/", which it cannot write.
-for image in pptr-official pptr-slim pw-official pw-slim; do
-  if start "$image" --cap-add=SYS_ADMIN --user 4242; then
-    echo "RECORD $image as user 4242: healthy"
-  else
-    docker logs "$name" > "$work/log.txt" 2>&1
-    echo "RECORD $image as user 4242: $(grep -m 1 -E 'crashpad|Error|error' "$work/log.txt" | cut -c 1-300)"
-  fi
+for image in pptr-official pptr-slim; do
+  expect_error "$image as user 4242" 'chrome_crashpad_handler: --database is required' \
+    "$image" --cap-add=SYS_ADMIN --user 4242
+  expect_healthy "$image as user 4242 with HOME=/tmp" "$image" --cap-add=SYS_ADMIN --user 4242 -e HOME=/tmp
   docker rm -f "$name" > /dev/null
-  if start "$image" --cap-add=SYS_ADMIN --user 4242 -e HOME=/tmp; then
-    echo "RECORD $image as user 4242 with HOME=/tmp: healthy $(cat "$work/health.json")"
-  else
-    docker logs "$name" > "$work/log.txt" 2>&1
-    echo "RECORD $image as user 4242 with HOME=/tmp: $(grep -m 1 -E 'crashpad|Error|error' "$work/log.txt" | cut -c 1-300)"
-  fi
+done
+for image in pw-official pw-slim; do
+  expect_healthy "$image as user 4242" "$image" --cap-add=SYS_ADMIN --user 4242
   docker rm -f "$name" > /dev/null
 done
 
@@ -227,30 +221,40 @@ for image in pptr-slim pw-official; do
 done
 
 echo "== 9. Crashes"
-for image in pptr-slim pw-slim; do
-  for what in browser renderer; do
-    echo "RECORD $image, $what: $(probe "$image" node probes/crash.mjs "$what" | tr '\n' ' ')"
-  done
-done
+# crash.mjs ends the browser or the renderer processes during a call.
+expect_probe() { # label text image [command...]
+  local label=$1 text=$2
+  shift 2
+  out=$(probe "$@")
+  grep -q -F -- "$text" <<< "$out" || fail "$label: expected: $text, got: $out"
+  echo "OK   $label: $(tr '\n' ' ' <<< "$out")"
+}
+expect_probe "Puppeteer, browser crash" 'TargetCloseError: Protocol error (Runtime.callFunctionOn): Target closed' \
+  pptr-slim node probes/crash.mjs browser
+expect_probe "Puppeteer, renderer killed, no handler" 'still waiting after 15 s' \
+  pptr-slim node probes/crash.mjs renderer-no-handler
+expect_probe "Puppeteer, renderer killed, handler closes the context" 'Target closed' \
+  pptr-slim node probes/crash.mjs renderer
+expect_probe "Playwright, browser crash" 'page.evaluate: Target page, context or browser has been closed' \
+  pw-slim node probes/crash.mjs browser
+expect_probe "Playwright, renderer killed" 'page.evaluate: Target crashed' \
+  pw-slim node probes/crash.mjs renderer
 
 echo "== 10. /dev/shm and memory"
 # shm.mjs takes three full-page screenshots of a page 16,000 px tall.
 for image in pptr-slim pw-slim; do
-  for opts in "" "--shm-size=1g" "--shm-size=8m" "--shm-size=1m"; do
-    for mode in default use-dev-shm; do
-      # shellcheck disable=SC2086
-      echo "RECORD $image [$opts] $mode: $(probe $opts "$image" node probes/shm.mjs "$mode" | tr '\n' ' ' | cut -c 1-300)"
-    done
-  done
-  out=$(probe "$image" node probes/shm.mjs use-dev-shm)
-  grep -q ': OK' <<< "$out" || fail "$image: the screenshot failed with the 64 MB /dev/shm"
-  echo "OK   $image, 64 MB /dev/shm without --disable-dev-shm-usage: $(grep ': OK' <<< "$out")"
-  out=$(probe --memory=512m --memory-swap=512m "$image" node probes/shm.mjs default)
-  grep -q 'Unable to capture screenshot' <<< "$out" || fail "$image: expected a failed screenshot at 512 MB"
-  echo "OK   $image, memory limit 512 MB: $(grep -m 1 'Unable to capture screenshot' <<< "$out")"
-  out=$(probe --memory=1g --memory-swap=1g "$image" node probes/shm.mjs default)
-  grep -q ': OK' <<< "$out" || fail "$image: the screenshot failed at 1 GB"
-  echo "OK   $image, memory limit 1 GB: $(grep ': OK' <<< "$out")"
+  expect_probe "$image, default /dev/shm, default flags" 'with --disable-dev-shm-usage, /dev/shm 64 MB: OK' \
+    "$image" node probes/shm.mjs default
+  expect_probe "$image, default /dev/shm, flag removed" 'without --disable-dev-shm-usage, /dev/shm 64 MB: OK' \
+    "$image" node probes/shm.mjs use-dev-shm
+  expect_probe "$image, 1 MB /dev/shm, flag removed" 'without --disable-dev-shm-usage, /dev/shm 1 MB: OK' \
+    --shm-size=1m "$image" node probes/shm.mjs use-dev-shm
+  expect_probe "$image, 1 GB /dev/shm, flag removed" 'without --disable-dev-shm-usage, /dev/shm 1024 MB: OK' \
+    --shm-size=1g "$image" node probes/shm.mjs use-dev-shm
+  expect_probe "$image, memory limit 512 MB" 'Unable to capture screenshot' \
+    --memory=512m --memory-swap=512m "$image" node probes/shm.mjs default
+  expect_probe "$image, memory limit 1 GB" ': OK' \
+    --memory=1g --memory-swap=1g "$image" node probes/shm.mjs default
 done
 
 echo "== 11. Health check, restart after a crash, and docker stop"

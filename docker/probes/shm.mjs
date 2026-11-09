@@ -1,6 +1,6 @@
 // Takes a full-page screenshot of a tall page, three times.
 // "use-dev-shm" removes --disable-dev-shm-usage, so Chrome uses /dev/shm.
-import { statfsSync } from 'node:fs';
+import { readdirSync, readFileSync, statfsSync } from 'node:fs';
 import { launch, library, newPage } from './launch.mjs';
 
 const mode = process.argv[2] ?? 'default';
@@ -14,6 +14,18 @@ const blocks = Array.from({ length: 200 }, (_, i) =>
 ).join('');
 
 const browser = await launch(ignore);
+// Read the command line of the browser process, to show the flag.
+let flag = 'unknown';
+for (const pid of readdirSync('/proc').filter((name) => /^\d+$/.test(name))) {
+  try {
+    const args = readFileSync(`/proc/${pid}/cmdline`, 'utf8');
+    if (args.includes('--remote-debugging') && !args.includes('--type=')) {
+      flag = args.includes('--disable-dev-shm-usage') ? 'with --disable-dev-shm-usage' : 'without --disable-dev-shm-usage';
+    }
+  } catch {
+    // The process ended.
+  }
+}
 const times = [];
 try {
   for (let i = 0; i < 3; i++) {
@@ -25,9 +37,9 @@ try {
     await page.close();
     if (i === 0) console.log(`  PNG: ${png.length} bytes`);
   }
-  console.log(`${library}, ${mode}, /dev/shm ${shmMb} MB: OK, screenshot times ${times.join(', ')} ms`);
+  console.log(`${library}, ${flag}, /dev/shm ${shmMb} MB: OK, screenshot times ${times.join(', ')} ms`);
 } catch (error) {
-  console.log(`${library}, ${mode}, /dev/shm ${shmMb} MB: FAILED`);
+  console.log(`${library}, ${flag}, /dev/shm ${shmMb} MB: FAILED`);
   console.log(String(error.stack ?? error).split('\n').slice(0, 6).join('\n'));
   process.exitCode = 3;
 } finally {
