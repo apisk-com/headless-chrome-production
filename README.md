@@ -9,6 +9,7 @@ by step.
 | Folder | Language and tools | What it does | Tutorial |
 |---|---|---|---|
 | [docker](docker/) | Docker, Puppeteer, Playwright | Docker images for Puppeteer and Playwright, and the errors they prevent | [Run Puppeteer and Playwright in Docker Without Crashes](https://apisk.com/blog/puppeteer-playwright-docker/), 5 January 2027 |
+| [ssrf-protection](ssrf-protection/) | Node.js, Puppeteer, Playwright | Blocks internal addresses, file URLs and redirects in a URL rendering API | [Secure a Screenshot or PDF API Against SSRF and Abuse](https://apisk.com/blog/secure-screenshot-pdf-api-ssrf/), 27 January 2027 |
 
 Each folder runs on its own: open its `README.md` for the commands.
 
