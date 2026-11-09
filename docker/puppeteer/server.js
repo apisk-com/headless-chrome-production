@@ -37,8 +37,14 @@ function environment() {
   } catch {
     // macOS and Windows have no /dev/shm.
   }
-  const user = userInfo();
-  return `${version} · user ${user.username} (${user.uid}) · sandbox ${SANDBOX ? 'on' : 'off'} · /dev/shm ${shm}`;
+  // A user ID without an entry in /etc/passwd has no name.
+  let user = `uid ${process.getuid()}`;
+  try {
+    user = `${userInfo().username} (${process.getuid()})`;
+  } catch {
+    // Kubernetes and OpenShift can start containers with such a user ID.
+  }
+  return `${version} · user ${user} · sandbox ${SANDBOX ? 'on' : 'off'} · /dev/shm ${shm}`;
 }
 
 // A page with text in several scripts. A missing font shows as empty boxes.
