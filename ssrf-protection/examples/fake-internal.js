@@ -1,9 +1,9 @@
 // Two fake internal services on 127.0.0.1 for the examples: an admin page
-// on port 8080 and a cloud metadata endpoint on port 8169. All values are
+// on port 8170 and a cloud metadata endpoint on port 8169. All values are
 // fake. Each request shows in the log, so you can see what got through.
 import { createServer } from 'node:http';
 
-const ADMIN_PORT = Number(process.env.ADMIN_PORT ?? 8080);
+const ADMIN_PORT = Number(process.env.ADMIN_PORT ?? 8170);
 const METADATA_PORT = Number(process.env.METADATA_PORT ?? 8169);
 
 createServer((req, res) => {

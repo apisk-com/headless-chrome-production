@@ -74,7 +74,7 @@ function blockedError(reason) {
 }
 
 // Loads a job into a page and remembers the last response for the main
-// document, also after a script or a meta refresh moves the page.
+// document, also when a script moves the page to another URL.
 // Puppeteer and Playwright pages both work here.
 async function load(page, job, blocked) {
   const main = { response: null };
