@@ -59,12 +59,14 @@ status=$(curl -s -o "$work/metadata.json" -w '%{http_code}' -X POST http://local
 echo "metadata URL: $status $(cat "$work/metadata.json")"
 [ "$status" = 403 ] || fail "the metadata URL must return 403"
 
-curl -s -D "$work/headers.txt" -o "$work/frames.pdf" -X POST http://localhost:3000/pdf \
-  -H "Content-Type: application/json" \
-  -d @examples/internal-frames.json
+# The same commands as in the README and the article.
+curl -X POST http://localhost:3000/pdf -H "Content-Type: application/json" -d '{"url": "http://169.254.169.254/latest/meta-data/"}' > "$work/readme-metadata.json"
+grep -q '"code":"BLOCKED_BY_POLICY"' "$work/readme-metadata.json" || fail "the README metadata request must be blocked"
+curl -D - -o frames.pdf -X POST http://localhost:3000/pdf -H "Content-Type: application/json" -d @examples/internal-frames.json > "$work/headers.txt"
 grep -i '^x-blocked-requests' "$work/headers.txt"
 grep -qi '^x-blocked-requests: 3' "$work/headers.txt" || fail "the three frames must be blocked"
-[ "$(head -c 5 "$work/frames.pdf")" = "%PDF-" ] || fail "no PDF"
+[ "$(head -c 5 frames.pdf)" = "%PDF-" ] || fail "no PDF"
+rm frames.pdf
 if grep -E 'admin:|metadata:' "$work/fake-internal.log"; then
   fail "a request reached the fake internal services"
 fi
@@ -72,8 +74,7 @@ echo "fake internal services: no requests"
 grep 'blocked' "$work/server.log" | head -3
 
 echo "== 4. Docker: the renderer has no route out, only the proxy"
-docker compose build -q
-docker compose up -d --wait
+docker compose up -d --build --wait
 docker image ls --format '{{.Repository}} {{.Size}}' | grep ssrf-protection
 
 # A fake metadata service on the outside network: the proxy can reach it,
@@ -92,6 +93,10 @@ status=$(render '{"url": "https://example.com/"}')
 echo "https://example.com/ through the proxy: $status"
 [ "$status" = 200 ] || { cat "$work/out"; docker compose logs; fail "a public page must render"; }
 head -c 5 "$work/out" | grep -q '%PDF-' || fail "no PDF"
+# The command from the README and the article.
+docker compose exec -T renderer curl -s -X POST http://localhost:3000/pdf -H "Content-Type: application/json" -d '{"url": "https://example.com/"}' > "$work/example.pdf"
+[ "$(head -c 5 "$work/example.pdf")" = "%PDF-" ] || fail "the README Docker command must return a PDF"
+echo "README Docker command: $(wc -c < "$work/example.pdf") bytes of PDF"
 
 status=$(render '{"url": "http://fake-metadata:8169/latest/meta-data/"}')
 echo "http://fake-metadata:8169/ through the proxy: $status $(head -n 1 "$work/out")"
