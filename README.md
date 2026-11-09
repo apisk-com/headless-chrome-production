@@ -6,7 +6,11 @@ by step.
 
 ## Examples
 
-The list grows as the tutorials are published.
+| Folder | Language and tools | What it does | Tutorial |
+|---|---|---|---|
+| [docker](docker/) | Docker, Puppeteer, Playwright | Docker images for Puppeteer and Playwright, and the errors they prevent | [Run Puppeteer and Playwright in Docker Without Crashes](https://apisk.com/blog/puppeteer-playwright-docker/), 5 January 2027 |
+
+Each folder runs on its own: open its `README.md` for the commands.
 
 ## Add an example
 
